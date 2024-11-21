@@ -26,9 +26,7 @@ enum class parse_args_errors {
 struct program_options {
   bool show_help = false;
   bool modo_ampliado = false;
-  bool puerto = false;
   std::string nombre_fichero;
-  std::string nombre_puerto;
   std::vector<std::string> additional_args; 
 };
 
