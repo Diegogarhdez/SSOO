@@ -25,7 +25,7 @@ std::expected<program_options, parse_args_errors> parse_args(int argc, char* arg
         return std::unexpected(parse_args_errors::missing_argument);
       }
       options.puerto = true;
-      options.DOCSERVER_PORT = std::string(*it);
+      options.DOCSERVER_PORT = static_cast<uint16_t>(std::stoi(std::string(*it)));
     } else if (!it->starts_with("-")) {
       // Procesar argumentos sin guion como nombre de archivo o argumentos adicionales
       if (options.nombre_fichero.empty()) {
@@ -46,10 +46,15 @@ std::expected<program_options, parse_args_errors> parse_args(int argc, char* arg
   return options;
 }
 
-
-void send_response(std::string_view header, std::string_view body) {
+//enviar una respuesta
+int send_response(const SafeFD& socket, std::string_view header, std::string_view body) {
+  if (body.empty()) {
+    return 1;
+  }
+  std::cout << "Socket:" << socket.get() << "\n";
   std::cout << header << "\n";
   std::cout << body << "\n";
+  return 0;
 }
 
 std::expected<SafeMap, std::string> map_file(SafeFD& fd, size_t length) {
@@ -99,4 +104,53 @@ std::expected<SafeMap, int> read_all(const std::string& path, const bool& modo_a
   }
 
   return std::move(map_result.value());
+}
+
+
+std::expected<SafeFD, int> make_socket(uint16_t port) {
+  // Crear el socket
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) {
+    return std::unexpected(errno);
+  }
+
+  // Configurar el socket para reutilizar direcciones
+  int opt = 1;
+  if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    close(sockfd);
+    return std::unexpected(errno);
+  }
+
+  // Configurar la dirección y puerto para el bind
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;         // IPv4
+  addr.sin_port = htons(port);      // Convertir puerto a orden de bytes de red
+  addr.sin_addr.s_addr = INADDR_ANY; // Aceptar conexiones de cualquier interfaz
+
+  // Vincular el socket al puerto
+  if (bind(sockfd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
+    close(sockfd);
+    return std::unexpected(errno);
+  }
+
+  return SafeFD(sockfd);
+}
+
+int listen_connection(const SafeFD& socket) {
+  constexpr int conexiones = 5; // Número máximo de conexiones pendientes
+  if (listen(socket.get(), conexiones) < 0) {
+    return errno;
+  }
+  return 0; // Éxito
+}
+
+
+// Función para aceptar conexiones entrantes
+std::expected<SafeFD, int> accept_connection(const SafeFD& socket, sockaddr_in& client_addr) {
+  socklen_t addr_len = sizeof(client_addr);
+  int client_fd = accept(socket.get(), reinterpret_cast<sockaddr*>(&client_addr), &addr_len);
+  if (client_fd < 0) {
+    return std::unexpected(errno);
+  }
+  return SafeFD(client_fd);
 }

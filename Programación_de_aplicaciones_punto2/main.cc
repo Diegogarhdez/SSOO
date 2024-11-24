@@ -19,6 +19,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <arpa/inet.h>
+#include <unistd.h>     
+#include <sys/types.h>  
+#include <sys/socket.h> 
 
 #include "tools.h"
 
@@ -45,29 +49,55 @@ int main(int argc, char* argv[]) {
     Uso(argv[0]);
     return EXIT_FAILURE;
   } 
-
-  std::string header;
-  std::string body;
-  auto resultado = read_all(options.value().nombre_fichero.c_str(), options.value().modo_ampliado);
-  if (!resultado) {
-    int error_code = resultado.error();
-    // Manejo de errores específicos
-    if (error_code == 404) {
-      header = "404 Not Found";
-      body = "";
-    } else if (error_code == 403) {
-      header = "403 Forbidden";
-      body = "";
-    } else if (error_code > 0) {
-      // Manejo de otros errores desconocidos
-      std::cout << "ERROR DESCONOCIDO: " << error_code << "\n";
-      return EXIT_FAILURE;
-    } 
-  } else {
-    header = std::format("Content-Length: {}\n", resultado.value().size());
-    body = resultado.value().get();
+  auto socket_result = make_socket(options.value().DOCSERVER_PORT);
+  if (!socket_result) {
+    std::cerr << "Error al crear el socket: " << socket_result.error() << "\n";
+    return EXIT_FAILURE;
   }
-  send_response(header, body);
+  SafeFD server_socket = std::move(socket_result.value());
+  
+  if (int err = listen_connection(server_socket); err != 0) {
+    std::cerr << "Error al poner el socket en modo de escucha.\n";
+    return EXIT_FAILURE;
+  }
 
+  std::cout << "Socket creado y escuchando en el puerto " << options.value().puerto << "\n";
+
+  sockaddr_in client_addr{};
+  while (true) {
+    auto client_socket_result = accept_connection(server_socket, client_addr);
+    if (!client_socket_result) {
+      std::cerr << "Error al aceptar una conexión: " << strerror(client_socket_result.error()) << "\n";
+      continue;
+    }
+
+    SafeFD client_socket = std::move(client_socket_result.value());
+    std::cout << "Conexión completada!\n"; 
+
+    std::string header;
+    std::string body;
+    auto resultado = read_all(options.value().nombre_fichero.c_str(), options.value().modo_ampliado);
+    if (!resultado) {
+      int error_code = resultado.error();
+      // Manejo de errores específicos
+      if (error_code == 404) {
+        header = "404 Not Found";
+        body = "";
+      } else if (error_code == 403) {
+        header = "403 Forbidden";
+        body = "";
+      } else if (error_code > 0) {
+        // Manejo de otros errores desconocidos
+        std::cout << "ERROR DESCONOCIDO: " << error_code << "\n";
+        return EXIT_FAILURE;
+      } 
+    } else {
+      header = std::format("Content-Length: {}\n", resultado.value().size());
+      body = resultado.value().get();
+    }
+    if (send_response(client_socket, header, body) == 0) {
+
+    }
+  }
   return EXIT_SUCCESS;
 }
