@@ -25,7 +25,7 @@ std::expected<program_options, parse_args_errors> parse_args(int argc, char* arg
         return std::unexpected(parse_args_errors::missing_argument);
       }
       options.puerto = true;
-      options.nombre_puerto = std::string(*it);
+      options.DOCSERVER_PORT = std::string(*it);
     } else if (!it->starts_with("-")) {
       // Procesar argumentos sin guion como nombre de archivo o argumentos adicionales
       if (options.nombre_fichero.empty()) {
@@ -60,22 +60,12 @@ std::expected<SafeMap, std::string> map_file(SafeFD& fd, size_t length) {
   return SafeMap{addr, length};
 }
 
-std::expected<std::vector<uint8_t>, std::string> read_file(SafeFD& fd, size_t max_size) {
-  std::vector<uint8_t> buffer(max_size);
-  ssize_t bytes_read = read(fd.get(), buffer.data(), max_size);
-  if (bytes_read < 0) {
-    return std::unexpected(std::strerror(errno));
-  }
-  buffer.resize(bytes_read);
-  return buffer;
-}
-
 SafeFD open_file(const std::string& path, int flags, mode_t mode = 0) {
   int fd = open(path.c_str(), flags, mode);
   return SafeFD{fd};
 }
 
-std::expected<SafeMap, int> read_all(const std::string& path) {
+std::expected<SafeMap, int> read_all(const std::string& path, const bool& modo_ampliado) {
   // Abrir el archivo de forma segura
   if (access(path.c_str(), F_OK)) {
     return std::unexpected(403);
@@ -84,11 +74,17 @@ std::expected<SafeMap, int> read_all(const std::string& path) {
   if (fd.get() < 0) {
     return std::unexpected(404);
   }
-
+  if (modo_ampliado == true) {
+    std::cout << "open: se abre el archivo <" << path << ">\n";
+  }
+  
   // Obtener el tamaño del archivo
   off_t length = lseek(fd.get(), 0, SEEK_END);
   if (length < 0) {
     return std::unexpected(errno);
+  }
+  if (modo_ampliado == true) {
+    std::cout << " read: se leen " << length << " bytes del archivo <" << path << ">\n\n";
   }
 
   // Volver al inicio del archivo

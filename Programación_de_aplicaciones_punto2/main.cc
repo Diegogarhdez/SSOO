@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 
   std::string header;
   std::string body;
-  auto resultado = read_all(options.value().nombre_fichero.c_str());
+  auto resultado = read_all(options.value().nombre_fichero.c_str(), options.value().modo_ampliado);
   if (!resultado) {
     int error_code = resultado.error();
     // Manejo de errores específicos
@@ -67,7 +67,6 @@ int main(int argc, char* argv[]) {
     header = std::format("Content-Length: {}\n", resultado.value().size());
     body = resultado.value().get();
   }
-  
   send_response(header, body);
 
   return EXIT_SUCCESS;
