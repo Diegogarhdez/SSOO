@@ -31,7 +31,7 @@ struct program_options {
   bool modo_ampliado = false;
   bool puerto = false;
   std::string nombre_fichero;
-  uint16_t DOCSERVER_PORT;
+  uint16_t DOCSERVER_PORT = 8080;
   std::vector<std::string> additional_args; 
 };
 

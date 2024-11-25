@@ -1,7 +1,7 @@
 #include "tools.h"
 
 void Uso(const std::string& nombre_programa) {
-  std::cout << "Faltan parametros del programa.\n  Uso del programa: " << nombre_programa << " [-v |--verbose] [-h |--help] [-p <puerto>| --port <puerto>] ARCHIVO\n";
+  std::cerr << "Faltan parametros del programa.\n  Uso del programa: " << nombre_programa << " [-v |--verbose] [-h |--help] [-p <puerto>| --port <puerto>] ARCHIVO\n";
 }
 
 void MostrarAyuda(const std::string& nombre_programa) {
@@ -97,10 +97,16 @@ std::expected<SafeMap, int> read_all(const std::string& path, const bool& modo_a
     return std::unexpected(errno);  
   }
 
+  if (modo_ampliado == true) {
+    std::cout << "mapeando archivo en memoría...\n";
+  }
   // Mapear el archivo en memoria
   auto map_result = map_file(fd, static_cast<size_t>(length));
   if (!map_result) {
     return std::unexpected(errno);
+  }
+  if (modo_ampliado == true) {
+    std::cout << "mapeado correctamente el archivo en memoria.\n";
   }
 
   return std::move(map_result.value());
@@ -113,7 +119,6 @@ std::expected<SafeFD, int> make_socket(uint16_t port) {
   if (sockfd < 0) {
     return std::unexpected(errno);
   }
-
   // Configurar el socket para reutilizar direcciones
   int opt = 1;
   if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
@@ -126,7 +131,6 @@ std::expected<SafeFD, int> make_socket(uint16_t port) {
   addr.sin_family = AF_INET;         // IPv4
   addr.sin_port = htons(port);      // Convertir puerto a orden de bytes de red
   addr.sin_addr.s_addr = INADDR_ANY; // Aceptar conexiones de cualquier interfaz
-
   // Vincular el socket al puerto
   if (bind(sockfd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
     close(sockfd);
@@ -143,7 +147,6 @@ int listen_connection(const SafeFD& socket) {
   }
   return 0; // Éxito
 }
-
 
 // Función para aceptar conexiones entrantes
 std::expected<SafeFD, int> accept_connection(const SafeFD& socket, sockaddr_in& client_addr) {

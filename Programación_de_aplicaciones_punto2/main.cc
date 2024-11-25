@@ -33,9 +33,9 @@ int main(int argc, char* argv[]) {
     // Usar options.error() para comprobar el motivo del error
     if (options.error() == parse_args_errors::missing_argument) {
       // Mostrar mensaje de error por falta de argumento
-      std::cout << "Faltan argumentos.\n Use " << argv[0] << " [-h|--help] para más información.\n";
+      std::cerr << "Faltan argumentos.\n Use " << argv[0] << " [-h|--help] para más información.\n";
     } else if (options.error() == parse_args_errors::unknown_option) {
-      std::cout << "Opcion Desconocida.\n Use " << argv[0] << " [-h|--help] para más información.\n";
+      std::cerr << "Opcion Desconocida.\n Use " << argv[0] << " [-h|--help] para más información.\n";
     }
     return EXIT_FAILURE;
   }
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  std::cout << "Socket creado y escuchando en el puerto " << options.value().puerto << "\n";
+  std::cout << "Socket creado y escuchando en el puerto " << options.value().DOCSERVER_PORT << "\n";
 
   sockaddr_in client_addr{};
   while (true) {
@@ -81,11 +81,11 @@ int main(int argc, char* argv[]) {
       int error_code = resultado.error();
       // Manejo de errores específicos
       if (error_code == 404) {
-        header = "404 Not Found";
-        body = "";
+        std::cerr << "404 Not Found\n";
+        return EXIT_FAILURE;
       } else if (error_code == 403) {
-        header = "403 Forbidden";
-        body = "";
+        std::cerr <<"403 Forbidden\n";
+        return EXIT_FAILURE;
       } else if (error_code > 0) {
         // Manejo de otros errores desconocidos
         std::cout << "ERROR DESCONOCIDO: " << error_code << "\n";
@@ -95,8 +95,9 @@ int main(int argc, char* argv[]) {
       header = std::format("Content-Length: {}\n", resultado.value().size());
       body = resultado.value().get();
     }
-    if (send_response(client_socket, header, body) == 0) {
-
+    int respuesta = send_response(client_socket, header, body);
+    if (respuesta == 1) {
+      std::cerr << "El archivo de entrada esta vacío\n";
     }
   }
   return EXIT_SUCCESS;
