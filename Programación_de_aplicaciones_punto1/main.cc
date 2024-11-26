@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
     body = resultado.value().get();
   }
   
-  send_response(header, body);
+  send_response(header, body, options.value().sin_tamaño);
 
   return EXIT_SUCCESS;
 }

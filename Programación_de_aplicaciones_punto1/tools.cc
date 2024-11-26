@@ -18,6 +18,8 @@ std::expected<program_options, parse_args_errors> parse_args(int argc, char* arg
       options.show_help = true;
     } else if (*it == "-v" || *it == "--verbose") {
       options.modo_ampliado = true;
+    } else if (*it == "-n"){
+      options.sin_tamaño = true;
     } else if (!it->starts_with("-")) {
       if (options.nombre_fichero.empty()) {
         // El primer argumento sin "-" se asume como el archivo principal.
@@ -44,8 +46,10 @@ std::expected<program_options, parse_args_errors> parse_args(int argc, char* arg
   return options;
 }
 
-void send_response(std::string_view header, std::string_view body) {
-  std::cout << header << "\n";
+void send_response(std::string_view header, std::string_view body, bool sin_tamaño) {
+  if (!sin_tamaño) {
+    std::cout << header << "\n";
+  }
   std::cout << body << "\n";
 }
 
