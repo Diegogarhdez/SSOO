@@ -1,0 +1,100 @@
+Primera parte:
+
+1. main: llamar a las funciones parse_args y read_all
+  HECHO: parse_args() procesar argumentos y después comprobar con std::vector<std::string_view> args(argv + 1, argv + argc); (*1)
+  a) si no procesa bien los argumentos error fatal
+  b) si contiene -h o --help muestra la ayuda y termina sin errores
+  c) sino se especifica nombre del archivo error fatal
+  - read_all()
+  d) leer archivo en memoria
+  e) si no tiene permisos para abrir el archivo o no lo encuentra mostrar send_response() error(devolver 0 pero terminar directamente)
+  f) si encuentra cualquier otro error, error fatal (devolver 1)
+  g) si no tiene errores send_response() y mostrar en la salida estandar
+
+2. funcion read_all(): std::expected<std::string_view, int> read_all(const std::string& path);
+  a) usar mmap() para mapear en memoria el path
+  b) read_all tiene que devolver un entero con el valor de errno en caso de error
+  c) aprender a usar mmap(): https://github.com/ull-esit-sistemas-operativos/ssoo-ejemplos/blob/so2425/src/cap17/README.md
+3. funcion send_response(): void send_response(std::string_view header, std::string_view body = {});
+  a) mostrar por salida estandar el contenido de header seguido de una linea en blanco 
+  b) mostrar el contenido de body siempre que no este vacio
+  (*2)
+  c) mostrar el error 404 o 403 en el header si es necesario
+  d) desmapear el archivo de la memoria con munmap(direccion_de_la_region_mapeada, tamaño) (salidos del read_all)
+4. clase SafeMap: similar a SafeFD pero con atributo std::string_view y sus métodos adaptados
+  a) SafeMap tiene que tener un destructor que llame a munmap() 
+  b) cambiar el read_all para que use SafeMap: std::expected<SafeMap, int> read_all(const std::string& path);
+  c) usar el método get() del objeto SafeMap devuelto por read_all(), para obtener el std::string_view que apunta a la región mapeada.
+############################################
+
+Segunda parte:
+
+netcat -v 127.0.0.1 //puerto a elegir y direccion propia 
+int fd = socket(AF_NET, SOCKET_STREAM, 0);
+if (fd < 0) //error
+bind(int fd, const sockaddr* addr, socklen_t addrlen)
+
+int sendto(int sock_fd, const void* buffer, size_t length, int flags, const sockaddr* dest_addr, socklen_t dest_len);
+int recvfrom(int sock_fd, void* buffer, size_t length, int flags, sockaddr* src_addr, socklen_t* src_len);
+int listen(int sock_fd, int backlog);
+int accept(int sock_fd, sockaddr* addr, socklen_t* addrlen);
+
+
+1. Socket: Definir protocolo
+2. bind: asignar IP
+3. listen: puerto escucha
+4. Acept: aceptar conexiones
+5. recv
+
+
+
+
+  
+
+
+
+
+(*1):
+for (auto it = args.begin(), end = args.end(); it != end; ++it)
+{
+if (*it == "-h" || *it == "--help")
+{
+show_help = true;
+}
+else if (*it == "-o" || *it == "--output")
+{
+if (++it != end)
+{
+output_filename = *it;
+}
+else
+{
+// Error por falta de argumento...
+}
+}
+// Procesar otras opciones...
+else if (!it->starts_with("-"))
+{
+// Añadir a un vector los argumentos adicionales
+// que no son opciones. Por ejemplo, nombres de archivo.
+additional_args.push_back(*it);
+}
+// ...
+}
+
+
+(*2)
+Content-Length: 10 (header)
+ 
+Hola mundo (body)
+---------------------------------------------------------------
+Formas de construir el header:
+
+std::ostringstream oss;
+oss << "Content-Length: " << size << '\n';
+std::string header = oss.str();
+
+o 
+
+std::string header = std::format("Content-Length: {}\n", size);
+----------------------------------------------------------------
