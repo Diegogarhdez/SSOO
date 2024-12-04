@@ -35,7 +35,9 @@ class SafeMap {
     }
     return *this;
   }
-  ~SafeMap() noexcept { release(); }
+  ~SafeMap() noexcept { 
+    release();
+  }
 
   [[nodiscard]] std::string_view get() const noexcept {
     if (!addr_ || length_ == 0) {
@@ -44,6 +46,7 @@ class SafeMap {
     return std::string_view(static_cast<const char*>(addr_), length_);
   }
   [[nodiscard]] size_t size() const noexcept { return length_; }
+  const void* data() const { return addr_; }
   [[nodiscard]] bool is_valid() const noexcept { return addr_ != nullptr; }
 
  private:
