@@ -17,6 +17,7 @@
 #include <sys/types.h>  
 #include <sys/socket.h> 
 #include <limits.h>
+#include <sys/wait.h>
 
 #include "SafeMap.h"
 
@@ -41,6 +42,17 @@ struct program_options {
   std::string DOCSERVER_BASEDIR = "/home/usuario/Sistemas_Operativos/SSOO/Programación_de_aplicaciones_punto3/";
 };
 
+struct execute_program_error {
+    int exit_code;  // Código de salida del programa
+    int error_code; // Código de error del sistema (errno)
+};
+
+struct exec_environment {
+  std::string request_path;
+  std::string server_basedir;
+  std::string remote_ip;
+  int remote_port;
+};
 
 std::expected<program_options, parse_args_errors> parse_args(int argc, char* argv[]);
 void Uso(const std::string&);
@@ -54,6 +66,6 @@ std::expected<std::string, int> receive_request(const SafeFD& socket, size_t max
 std::expected<std::string, int> process_request(const std::string& request, const std::string& base_dir);
 std::string build_http_response(const std::string& status, size_t content_length, const std::string& content_type = "text/plain");
 std::string getenvv(const std::string& name);
-
+std::expected<std::string, execute_program_error> execute_program(const std::string& path, const exec_environment& env);
 
 #endif

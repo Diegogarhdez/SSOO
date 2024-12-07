@@ -74,7 +74,8 @@ std::string getenvv(const std::string& name) {
 
 int send_response(const SafeFD& socket, std::string_view header,
                   std::string_view body) {
-  std::string response = std::string(header) + "\r\n\r\n" + std::string(body) + "\r\n";
+  std::string response =
+      std::string(header) + "\r\n\r\n" + std::string(body) + "\r\n";
   ssize_t bytes_sent = send(socket.get(), response.data(), response.size(), 0);
 
   if (bytes_sent < 0) {
@@ -180,7 +181,8 @@ std::expected<SafeFD, int> accept_connection(const SafeFD& socket,
   return SafeFD(client_fd);
 }
 
-std::expected<std::string, int> receive_request(const SafeFD& socket, size_t max_size) {
+std::expected<std::string, int> receive_request(const SafeFD& socket,
+                                                size_t max_size) {
   std::string message_text;
   message_text.resize(max_size);
   ssize_t bytes_read{recv(socket.get(), message_text.data(), max_size, 0)};
@@ -207,7 +209,7 @@ std::expected<std::string, int> process_request(const std::string& request,
   // Validar el archivo solicitado
   if (file_path.empty() || file_path[0] != '/') {
     std::cout << "Ruta no absoluta o archivo vacío\n";
-		std::cout << file_path << "\n";
+    std::cout << file_path << "\n";
     return std::unexpected(400);  // Bad Request
   }
 
@@ -221,7 +223,7 @@ std::expected<std::string, int> process_request(const std::string& request,
   // Verificar que la ruta esté dentro del directorio base
   if (full_path.string().find(normalized_base.string()) != 0) {
     std::cout << "Ruta fuera del directorio base\n";
-		std::cout << full_path << "\n";
+    std::cout << full_path << "\n";
     return std::unexpected(403);  // Forbidden
   }
 
@@ -234,4 +236,74 @@ std::expected<std::string, int> process_request(const std::string& request,
 
   // Retornar la ruta completa del archivo
   return full_path.string();
+}
+
+std::expected<std::string, execute_program_error> execute_program(
+    const std::string& path,
+    const exec_environment& env) {
+  
+  // Verificar permisos de ejecución
+  if (access(path.c_str(), X_OK) != 0) {
+    return std::unexpected(execute_program_error{
+        .exit_code = -1, .error_code = errno});
+  }
+
+  // Crear una tubería
+  int pipe_fd[2];
+  if (pipe(pipe_fd) == -1) {
+    return std::unexpected(execute_program_error{
+        .exit_code = -1, .error_code = errno});
+  }
+
+  pid_t pid = fork();
+  if (pid == -1) { // Error al hacer fork
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+    return std::unexpected(execute_program_error{
+        .exit_code = -1, .error_code = errno});
+  }
+
+  if (pid == 0) { // Proceso hijo
+    dup2(pipe_fd[1], STDOUT_FILENO); // Redirigir stdout a la tubería
+    close(pipe_fd[0]);               // Cerrar lectura de la tubería
+    close(pipe_fd[1]);
+
+    // Configurar variables de entorno
+    setenv("REQUEST_PATH", env.request_path.c_str(), 1);
+    setenv("SERVER_BASEDIR", env.server_basedir.c_str(), 1);
+    setenv("REMOTE_IP", env.remote_ip.c_str(), 1);
+    setenv("REMOTE_PORT", std::to_string(env.remote_port).c_str(), 1);
+
+    // Ejecutar el programa
+    execl(path.c_str(), path.c_str(), nullptr);
+    _exit(127); // Terminar si execl falla
+  }
+
+  // Proceso padre
+  close(pipe_fd[1]); // Cerrar escritura de la tubería
+
+  std::string output;
+  char buffer[1024];
+  ssize_t bytes_read;
+
+  while ((bytes_read = read(pipe_fd[0], buffer, sizeof(buffer))) > 0) {
+    output.append(buffer, bytes_read);
+  }
+
+  close(pipe_fd[0]); // Cerrar lectura de la tubería
+
+  // Esperar al hijo
+  int status;
+  if (waitpid(pid, &status, 0) == -1) {
+    return std::unexpected(execute_program_error{
+        .exit_code = -1, .error_code = errno});
+  }
+
+  // Verificar si el hijo terminó correctamente
+  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+    return output;
+  }
+
+  return std::unexpected(execute_program_error{
+      .exit_code = WEXITSTATUS(status), .error_code = 0});
 }

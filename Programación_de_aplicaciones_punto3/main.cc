@@ -77,6 +77,9 @@ int main(const int argc, char* argv[]) {
   SafeFD server_socket = std::move(socket_result.value());
 
   // Poner el socket en modo escucha
+  if (modo_ampliado) {
+    std::cout << "Poniendo socket en modo escucha\n";
+  }
   auto listen_result = listen_connection(server_socket);
   if (listen_result != 0) {
     std::cerr << "Error al poner el socket en modo escucha\n";
@@ -92,6 +95,8 @@ int main(const int argc, char* argv[]) {
     if (!client_socket_result.has_value()) {
       std::cerr << "Error al aceptar la conexión\n";
       continue;
+    } else if (modo_ampliado) {
+      std::cout << "conexión completada en puerto: " << puerto << "\n";
     }
 
     SafeFD client_socket = std::move(client_socket_result.value());
@@ -118,13 +123,41 @@ int main(const int argc, char* argv[]) {
       continue;
     }
 
-    // Construir la ruta completa del archivo
+    // Construir la ruta completa del archivo o programa
     std::string full_path = base_dir + archivo;
+
     if (modo_ampliado) {
-      std::cerr << "Ruta completa del archivo: " << full_path << "\n";
+      std::cerr << "Ruta completa: " << full_path << "\n";
     }
 
-    // Leer el archivo solicitado
+    // Detectar si es un programa a ejecutar
+    if (archivo.starts_with("/bin/")) {
+      // Configurar entorno para el programa
+      exec_environment env = {.request_path = archivo,
+                              .server_basedir = base_dir,
+                              .remote_ip = inet_ntoa(client_addr.sin_addr),
+                              .remote_port = ntohs(client_addr.sin_port)};
+
+      // Ejecutar el programa
+      auto exec_result = execute_program(base_dir + archivo.substr(1), env);
+      if (!exec_result.has_value()) {
+        auto error = exec_result.error();
+        if (error.error_code == ENOENT) {
+          send_response(client_socket, "404 Not Found", "");
+        } else if (error.error_code == EACCES) {
+          send_response(client_socket, "403 Forbidden", "");
+        } else {
+          send_response(client_socket, "500 Internal Server Error", "");
+        }
+        continue;
+      }
+
+      // Enviar la salida del programa
+      send_response(client_socket, "200 OK", exec_result.value());
+      continue;
+    }
+
+    // Leer el archivo solicitado si no es un programa
     auto file_result = read_all(full_path, modo_ampliado);
     if (!file_result.has_value()) {
       send_response(client_socket, "404 Not Found", "");
@@ -133,7 +166,8 @@ int main(const int argc, char* argv[]) {
 
     // Acceder al contenido del archivo usando SafeMap
     const SafeMap& file_map = file_result.value();
-    std::string_view file_content(reinterpret_cast<const char*>(file_map.data()), file_map.size());
+    std::string_view file_content(
+        reinterpret_cast<const char*>(file_map.data()), file_map.size());
 
     // Preparar el encabezado
     std::string header = std::format("Content-Length: {}\r\n", file_map.size());
@@ -149,7 +183,7 @@ int main(const int argc, char* argv[]) {
     } else if (respuesta != 0) {
       std::cerr << "Error: No se ha podido enviar la respuesta\n";
     }
-
-    return EXIT_SUCCESS;
   }
+
+  return EXIT_SUCCESS;
 }
