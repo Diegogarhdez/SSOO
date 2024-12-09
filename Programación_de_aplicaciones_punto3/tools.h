@@ -1,3 +1,12 @@
+// Universidad de La Laguna
+// Escuela Superior de Ingeniería y Tecnología
+// Grado en Ingeniería Informática
+// Asignatura: Sistemas Operativos
+// Curso: 2º
+// Práctica 2: Programación de aplicaciones
+// Autor: Diego García Hernández
+// Correo: alu0101633732@ull.edu.es
+
 #include <iostream>
 #include <cerrno>
 #include <cstring>
@@ -43,8 +52,8 @@ struct program_options {
 };
 
 struct execute_program_error {
-    int exit_code;  // Código de salida del programa
-    int error_code; // Código de error del sistema (errno)
+  int exit_code;  // Código de salida del programa
+  int error_code; // Código de error del sistema (errno)
 };
 
 struct exec_environment {

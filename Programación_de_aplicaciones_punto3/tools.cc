@@ -1,3 +1,12 @@
+// Universidad de La Laguna
+// Escuela Superior de Ingeniería y Tecnología
+// Grado en Ingeniería Informática
+// Asignatura: Sistemas Operativos
+// Curso: 2º
+// Práctica 2: Programación de aplicaciones
+// Autor: Diego García Hernández
+// Correo: alu0101633732@ull.edu.es
+
 #include "tools.h"
 
 void Uso(const std::string& nombre_programa) {
@@ -99,8 +108,7 @@ SafeFD open_file(const std::string& path, int flags, mode_t mode = 0) {
   return SafeFD{fd};
 }
 
-std::expected<SafeMap, int> read_all(const std::string& path,
-                                     const bool& modo_ampliado) {
+std::expected<SafeMap, int> read_all(const std::string& path, const bool& modo_ampliado) {
   if (access(path.c_str(), F_OK)) {
     return std::unexpected(403);  // Archivo no accesible
   }
@@ -169,11 +177,9 @@ int listen_connection(const SafeFD& socket) {
   return 0;  // Éxito
 }
 
-std::expected<SafeFD, int> accept_connection(const SafeFD& socket,
-                                             sockaddr_in& client_addr) {
+std::expected<SafeFD, int> accept_connection(const SafeFD& socket, sockaddr_in& client_addr) {
   socklen_t addr_len = sizeof(client_addr);
-  int client_fd = accept(socket.get(),
-                         reinterpret_cast<sockaddr*>(&client_addr), &addr_len);
+  int client_fd = accept(socket.get(), reinterpret_cast<sockaddr*>(&client_addr), &addr_len);
   if (client_fd < 0) {
     std::cerr << "Error al aceptar la conexión: " << strerror(errno) << "\n";
     return std::unexpected(errno);
@@ -181,8 +187,7 @@ std::expected<SafeFD, int> accept_connection(const SafeFD& socket,
   return SafeFD(client_fd);
 }
 
-std::expected<std::string, int> receive_request(const SafeFD& socket,
-                                                size_t max_size) {
+std::expected<std::string, int> receive_request(const SafeFD& socket, size_t max_size) {
   std::string message_text;
   message_text.resize(max_size);
   ssize_t bytes_read{recv(socket.get(), message_text.data(), max_size, 0)};
@@ -193,8 +198,7 @@ std::expected<std::string, int> receive_request(const SafeFD& socket,
   return message_text;
 }
 
-std::expected<std::string, int> process_request(const std::string& request,
-                                                const std::string& base_dir) {
+std::expected<std::string, int> process_request(const std::string& request, const std::string& base_dir) {
   // Analizar la solicitud
   std::istringstream stream(request);
   std::string method, file_path;
@@ -214,8 +218,7 @@ std::expected<std::string, int> process_request(const std::string& request,
   }
 
   // Normalizar el directorio base y construir la ruta completa
-  std::filesystem::path normalized_base =
-      std::filesystem::path(base_dir).lexically_normal();
+  std::filesystem::path normalized_base = std::filesystem::path(base_dir).lexically_normal();
   std::string trimmed_path = file_path.substr(1);  // Eliminar el '/' inicial
   std::filesystem::path full_path = normalized_base / trimmed_path;
   full_path = full_path.lexically_normal();  // Normalizar la ruta completa
@@ -244,23 +247,20 @@ std::expected<std::string, execute_program_error> execute_program(
   
   // Verificar permisos de ejecución
   if (access(path.c_str(), X_OK) != 0) {
-    return std::unexpected(execute_program_error{
-        .exit_code = -1, .error_code = errno});
+    return std::unexpected(execute_program_error{.exit_code = -1, .error_code = errno});
   }
 
   // Crear una tubería
   int pipe_fd[2];
   if (pipe(pipe_fd) == -1) {
-    return std::unexpected(execute_program_error{
-        .exit_code = -1, .error_code = errno});
+    return std::unexpected(execute_program_error{.exit_code = -1, .error_code = errno});
   }
 
   pid_t pid = fork();
   if (pid == -1) { // Error al hacer fork
     close(pipe_fd[0]);
     close(pipe_fd[1]);
-    return std::unexpected(execute_program_error{
-        .exit_code = -1, .error_code = errno});
+    return std::unexpected(execute_program_error{.exit_code = -1, .error_code = errno});
   }
 
   if (pid == 0) { // Proceso hijo
@@ -295,8 +295,7 @@ std::expected<std::string, execute_program_error> execute_program(
   // Esperar al hijo
   int status;
   if (waitpid(pid, &status, 0) == -1) {
-    return std::unexpected(execute_program_error{
-        .exit_code = -1, .error_code = errno});
+    return std::unexpected(execute_program_error{.exit_code = -1, .error_code = errno});
   }
 
   // Verificar si el hijo terminó correctamente
@@ -304,6 +303,5 @@ std::expected<std::string, execute_program_error> execute_program(
     return output;
   }
 
-  return std::unexpected(execute_program_error{
-      .exit_code = WEXITSTATUS(status), .error_code = 0});
+  return std::unexpected(execute_program_error{.exit_code = WEXITSTATUS(status), .error_code = 0});
 }

@@ -46,10 +46,24 @@ int accept(int sock_fd, sockaddr* addr, socklen_t* addrlen);
 4. Acept: aceptar conexiones
 5. recv
 
+######################################################################################################################
+
+Tercera parte:
 
 
+añadir variable de entorno con DOCSERVER_BASEDIR, para buscar el directorio de trabajo si no se pasa la variable usar getcwd()
+leer la peticion con recv() y hacer una salida de error si se ha cerrado la conexion antes 
+int receive_request(const SafeFD& socket, const std::string& request, size_t max_size); //similiar a read_all pero con recv() en vez de read
+excecute_program() // lanza fork() y en el otro lado exec() y comprobar errores
 
-  
+
+$ socat STDIO TCP:127.0.0.1:8080
+GET /ruta/del/archivo 1
+Content-Length: 10 2
+Hola mundo
+$
+1 Petición que enviamos al servidor para obtener el archivo /ruta/del/archivo.
+2 Respuesta del servidor con el contenido del archivo.
 
 
 

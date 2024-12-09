@@ -1,3 +1,12 @@
+// Universidad de La Laguna
+// Escuela Superior de Ingeniería y Tecnología
+// Grado en Ingeniería Informática
+// Asignatura: Sistemas Operativos
+// Curso: 2º
+// Práctica 2: Programación de aplicaciones
+// Autor: Diego García Hernández
+// Correo: alu0101633732@ull.edu.es
+
 #include <iostream>
 #include <cerrno>
 #include <cstring>

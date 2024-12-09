@@ -107,8 +107,7 @@ int main(const int argc, char* argv[]) {
       if (request_result.error() == ECONNRESET) {
         std::cerr << "Conexión reseteada por el cliente\n";
       } else {
-        std::cerr << "Error al recibir la petición: "
-                  << strerror(request_result.error()) << "\n";
+        std::cerr << "Error al recibir la petición: " << strerror(request_result.error()) << "\n";
       }
       continue;
     }
